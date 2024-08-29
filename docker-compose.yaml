@@ -1,0 +1,40 @@
+version: "3"
+
+services:
+  ia-ifba:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+
+    volumes:
+      - type: bind
+        source: .
+        target: /src
+    networks:
+      - services
+    env_file:
+      - ./.env
+    depends_on:
+      - ia-ifba-db
+    command: npm start
+
+  ia-ifba-db:
+    image: postgres
+    restart: always
+    networks:
+      - services
+    env_file:
+      - ./.env
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_SCHEMA: ${DB_SCHEMA}
+
+networks:
+  services:
+    name: services
