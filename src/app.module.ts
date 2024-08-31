@@ -11,10 +11,8 @@ import { ConfigModule } from '@nestjs/config';
     ConfigModule.forRoot(),
     SlrModule,
     TypeOrmModule.forRootAsync({
-      name: 'reader',
       imports: [AppModule],
       useFactory: (appEnvService: AppConfigService) => ({
-        name: 'reader',
         type: appEnvService.database.type as any,
         host: appEnvService.database.hostRead,
         port: appEnvService.database.port,

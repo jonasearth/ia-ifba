@@ -5,9 +5,11 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { SlrModelDataEntity } from './slr-model-data.entity';
 
 @Entity('slr-model')
 export class SlrModelEntity {
@@ -21,16 +23,24 @@ export class SlrModelEntity {
   name: string;
 
   @ApiResponseProperty()
-  @Column({ nullable: false })
+  @Column({ nullable: false, name: 'x_key' })
+  xKey: string;
+
+  @ApiResponseProperty()
+  @Column({ nullable: false, name: 'y_key' })
+  yKey: string;
+
+  @ApiResponseProperty()
+  @Column({ nullable: false, type: 'double precision' })
   intercept: number;
 
   @ApiResponseProperty()
-  @Column({ nullable: false, name: 'angular_coefficient' })
+  @Column({
+    nullable: false,
+    name: 'angular_coefficient',
+    type: 'double precision',
+  })
   angularCoefficient: number;
-
-  @ApiResponseProperty()
-  @Column({ type: 'jsonb', nullable: false })
-  data: Record<string, any>;
 
   @ApiResponseProperty()
   @CreateDateColumn({ name: 'created_at' })
@@ -43,4 +53,7 @@ export class SlrModelEntity {
   @ApiResponseProperty()
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt: Date | null;
+
+  @OneToOne(() => SlrModelDataEntity, (slrModelData) => slrModelData.slrModel)
+  slrModelData: SlrModelDataEntity[];
 }

@@ -1,0 +1,61 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <script type="text/javascript">
+  window.onload = function () {
+    var x = [{{axilXData}}];
+    var y = [{{axilYData}}];
+
+    var max = Math.max(...x);
+    var min = Math.min(...x);
+    var chart = new CanvasJS.Chart("chartContainer",
+    {
+      title:{
+        text: "{{name}}"
+      },
+      axisX: {
+        title: "{{axilXName}}",
+        minimum: min,
+        maximum: max
+      },
+      axisY: {
+        title: "{{axilYName}}",
+      },
+      data: [
+        {
+          type: "scatter",
+          dataPoints: x.map((val, index) => {
+            return { x: val, y: y[index] };
+          })
+        },
+        {        
+          type: "line",
+          indexLabelFontSize: 16,
+          dataPoints: [
+            { x: min, y: calculate(min, {{intercept}}, {{angularCoefficient}}) },
+            { x: max, y: calculate(max, {{intercept}}, {{angularCoefficient}})},
+            
+          ]
+        }
+      ]
+ });
+function calculate(
+    x,
+    intercept,
+    angularCoefficient
+  ) {
+    return (
+      intercept +
+      angularCoefficient * x
+    );
+  }
+chart.render();
+}
+</script>
+<script type="text/javascript" src="https://cdn.canvasjs.com/canvasjs.min.js"></script>
+</head>
+<body>
+  <div id="chartContainer" style="height: 300px; width: 100%;">
+  </div>
+</body>
+</html>

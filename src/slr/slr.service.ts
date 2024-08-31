@@ -1,9 +1,95 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { LinearRegressionOutput } from './dto/slr.dto';
+import { SlrModelRepository } from './slr-model.repository';
+import {
+  AddDataToSlrModelDto,
+  CreateSlrModelDto,
+} from './dto/create-slr-model.dto';
+import { SlrModelDataRepository } from './slr-model-data.repository';
+import { SlrModelEntity } from './entities/slr-model.entity';
+import { SlrModelDataEntity } from './entities/slr-model-data.entity';
 
 @Injectable()
 export class SlrService {
-  public calculateLinearRegression(
+  constructor(
+    private readonly slrModelRepository: SlrModelRepository,
+    private readonly slrModelDataRepository: SlrModelDataRepository,
+  ) {}
+
+  public async get(slrModelId: string): Promise<SlrModelEntity> {
+    const slr = await this.slrModelRepository.findById(slrModelId);
+    if (!slr) {
+      throw new NotFoundException('Model not found');
+    }
+    return slr;
+  }
+  public async appendData(
+    slrModelId: string,
+    body: AddDataToSlrModelDto,
+  ): Promise<SlrModelEntity> {
+    this.validateData(body.data);
+    const slr = await this.slrModelRepository.findById(slrModelId);
+    if (!slr) {
+      throw new NotFoundException('Model not found');
+    }
+    if (
+      slr.xKey !== Object.keys(body.data)[0] ||
+      slr.yKey !== Object.keys(body.data)[1]
+    ) {
+      throw new UnprocessableEntityException(
+        'Data keys do not match model keys',
+      );
+    }
+    const [x, y] = Object.values(body.data);
+    const previousData = await this.slrModelDataRepository.find({
+      slrModelId,
+    });
+    const { intercept, angularCoefficient } = this.calculateLinearRegression(
+      [...previousData.x, ...x],
+      [...previousData.y, ...y],
+    );
+    const [, model] = await Promise.all([
+      this.slrModelDataRepository.appendData(slrModelId, x, y),
+      this.slrModelRepository.update(slrModelId, {
+        angularCoefficient,
+        intercept,
+      }),
+    ]);
+    return model;
+  }
+  public async create(body: CreateSlrModelDto): Promise<SlrModelEntity> {
+    this.validateData(body.data);
+    const slr = await this.slrModelRepository.findByName(body.name);
+    if (slr) {
+      throw new ConflictException('Model already exists');
+    }
+    const [x, y] = Object.values(body.data);
+    const [key1, key2] = Object.keys(body.data);
+    const { intercept, angularCoefficient } = this.calculateLinearRegression(
+      x,
+      y,
+    );
+    const slrModel = await this.slrModelRepository.create({
+      name: body.name,
+      intercept,
+      angularCoefficient,
+      xKey: key1,
+      yKey: key2,
+    });
+    await this.slrModelDataRepository.create({
+      slrModelId: slrModel.id,
+      x,
+      y,
+    });
+    return slrModel;
+  }
+
+  private calculateLinearRegression(
     x: number[],
     y: number[],
   ): LinearRegressionOutput {
@@ -17,8 +103,25 @@ export class SlrService {
     const intercept = (sumY - angularCoefficient * sumX) / n;
     return { intercept, angularCoefficient };
   }
+  public async fullData(
+    slrModelId: string,
+  ): Promise<{ slrModel: SlrModelEntity; slrModelData: SlrModelDataEntity }> {
+    const slr = await this.slrModelRepository.findById(slrModelId);
+    if (!slr) {
+      throw new NotFoundException('Model not found');
+    }
+    const slrData = await this.slrModelDataRepository.find({ slrModelId });
+    return { slrModel: slr, slrModelData: slrData };
+  }
 
-  public predict(
+  public async predict(slrModelId: string, x: number): Promise<number> {
+    const slr = await this.slrModelRepository.findById(slrModelId);
+    if (!slr) {
+      throw new NotFoundException('Model not found');
+    }
+    return this.calculatePredict(x, slr);
+  }
+  private calculatePredict(
     x: number,
     linearRegressionData: LinearRegressionOutput,
   ): number {
@@ -26,5 +129,28 @@ export class SlrService {
       linearRegressionData.intercept +
       linearRegressionData.angularCoefficient * x
     );
+  }
+
+  private validateData(data: Record<string, number[]>): void {
+    if (Object.keys(data).length !== 2 || Object.values(data).length !== 2) {
+      throw new UnprocessableEntityException('Data must have two keys');
+    }
+    const [x, y] = Object.values(data);
+    if (x.length !== y.length) {
+      throw new UnprocessableEntityException('Data must have the same length');
+    }
+
+    if (
+      x.some(
+        (value) =>
+          isNaN(value) || !isFinite(value) || typeof value !== 'number',
+      ) ||
+      y.some(
+        (value) =>
+          isNaN(value) || !isFinite(value) || typeof value !== 'number',
+      )
+    ) {
+      throw new UnprocessableEntityException('Data must have only numbers');
+    }
   }
 }
