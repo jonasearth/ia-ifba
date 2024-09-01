@@ -9,8 +9,8 @@ import { join } from 'path';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = new DocumentBuilder()
-    .setTitle('Home Host API')
-    .setDescription('Lista de endpoints para deploy de projetos')
+    .setTitle('IA IFBA API')
+    .setDescription('API para o projeto de IA do IFBA')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

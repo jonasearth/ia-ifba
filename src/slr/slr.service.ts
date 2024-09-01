@@ -13,6 +13,7 @@ import {
 import { SlrModelDataRepository } from './slr-model-data.repository';
 import { SlrModelEntity } from './entities/slr-model.entity';
 import { SlrModelDataEntity } from './entities/slr-model-data.entity';
+import * as csv from 'csv-parse';
 
 @Injectable()
 export class SlrService {
@@ -61,6 +62,37 @@ export class SlrService {
       }),
     ]);
     return model;
+  }
+
+  public async appendDataCsv(slrModelId: string, file: Express.Multer.File) {
+    const csvData = file.buffer;
+    const parsedData: any = await new Promise((resolve, reject) => {
+      csv.parse(
+        csvData,
+        {
+          columns: true,
+          relax_quotes: true,
+          skip_empty_lines: true,
+          cast: true,
+        },
+        async (err, data) => {
+          if (err) {
+            reject(err);
+            return { error: true, message: 'Unable to parse file' };
+          }
+
+          resolve({
+            [Object.keys(data[0])[0]]: data.map(
+              (d) => d[Object.keys(data[0])[0]],
+            ),
+            [Object.keys(data[0])[1]]: data.map(
+              (d) => d[Object.keys(data[0])[1]],
+            ),
+          });
+        },
+      );
+    });
+    return await this.appendData(slrModelId, { data: parsedData });
   }
   public async create(body: CreateSlrModelDto): Promise<SlrModelEntity> {
     this.validateData(body.data);

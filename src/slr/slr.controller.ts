@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Post, Query, Res } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 
 import { Response } from 'express';
 import {
@@ -8,7 +19,9 @@ import {
 } from './dto/create-slr-model.dto';
 import { SlrService } from './slr.service';
 import {
+  ApiBody,
   ApiConflictResponse,
+  ApiConsumes,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -16,6 +29,8 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { SlrModelEntity } from './entities/slr-model.entity';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 @ApiTags('Simple Linear Regression')
 @Controller('slr')
@@ -54,6 +69,43 @@ export class SlrController {
     @Param('slrModelId') slrModelId: string,
   ): Promise<SlrModelEntity> {
     return await this.slrService.appendData(slrModelId, body);
+  }
+
+  @ApiOperation({ summary: 'Append data to a Simple Linear Regression model' })
+  @ApiNotFoundResponse({ description: 'Model not found' })
+  @ApiUnprocessableEntityResponse({ description: 'Invalid data' })
+  @ApiConsumes('multipart/form-data')
+  @ApiOkResponse({ type: SlrModelEntity })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @Post(':slrModelId/csv')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { files: 1, fileSize: 1024 * 1024 * 5 }, // 1 MB you can adjust size here
+      fileFilter: (req, file, cb) => {
+        const allowedMimeTypes = ['text/csv'];
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+          cb(new BadRequestException('Invalid file type'), false);
+        } else if (file?.size > 1024 * 1024 * 5) {
+          cb(
+            new BadRequestException('Max File Size Reached. Max Allowed: 1MB'),
+            false,
+          );
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  public async appendDataCsv(
+    @UploadedFile() file: Express.Multer.File,
+    @Param('slrModelId') slrModelId: string,
+  ): Promise<SlrModelEntity> {
+    return await this.slrService.appendDataCsv(slrModelId, file);
   }
 
   @Get(':slrModelId/predict')
