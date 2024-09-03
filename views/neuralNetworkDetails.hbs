@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    canvas {
+      border: 1px solid black;
+    }
+  </style>
+  
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+</head>
+<body>
+  <canvas id="myCanvas" width="100%" height="600"></canvas>
+  <table  class="w3-table-all w3-hoverable">
+    <thead>
+      <tr class="w3-light-grey">
+        <th>Layer</th>
+        <th>Neuron</th>
+        <th>Value</th>
+        <th>Weights</th>
+        <th>Bias</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each neuralNetwork.data.inputLayer.neurons as |neuron index|}}
+      <tr>
+        <td>INPUT</td>
+        <td>{{index}}</td>
+        <td>{{neuron.value}}</td>
+        <td>
+        {{#each neuron.weights as |weight|}}
+          <span>{{weight}}</span>
+        {{/each}}
+        </td>
+        <td>{{neuron.bias}}</td>
+      </tr>
+      {{/each}}
+      
+        {{#each neuralNetwork.data.hiddenLayers as |layer layerIndex|}}
+          {{#each layer.neurons as |neuron index|}}
+            <tr>
+              <td>HIDDEN</td>
+              <td>{{index}}</td>
+              <td>{{neuron.value}}
+
+              <td>{{#each neuron.weights as |weight index2|}}
+                <span>INPUT {{index2}} [{{weight}}],</span>
+              {{/each}}
+              </td>
+              <td>{{neuron.bias}}</td>
+            </tr>
+          {{/each}}
+        {{/each}}
+      
+        {{#each neuralNetwork.data.outputLayer.neurons as |neuron index|}}
+          <tr>
+            <td>OUTPUT</td>
+            <td>{{index}}</td>
+            <td>{{neuron.value}}</td>
+
+            <td>{{#each neuron.weights as |weight index2|}}
+              <span>HIDDEN {{index2}} [{{weight}}],</span>
+            {{/each}}
+            </td>
+            <td>{{neuron.bias}}</td>
+          </tr>
+        {{/each}}
+    </tbody>
+  </table>
+  <script>
+    function addInputTarget() {
+      const table = document.getElementById("inputTargetTable");
+      const row = table.insertRow();
+      const inputCell = row.insertCell();
+      const targetCell = row.insertCell();
+      const actionCell = row.insertCell();
+      inputCell.innerHTML = '<input type="text" name="input[]" placeholder="Enter input values">';
+      targetCell.innerHTML = '<input type="number" name="target[]" placeholder="Enter target values">';
+      actionCell.innerHTML = '<td><button onclick="removeRow(this)">Remove</button></td>';
+    }
+    function removeRow(button) {
+      const row = button.parentNode.parentNode;
+      row.parentNode.removeChild(row);
+    }
+  </script>
+  <form id="neuralNetworkForm" style="margin-top: 50px;">
+    <label for="maxInterations">Max Interations:</label>
+    <input type="number" id="maxInterations" value="1000" name="maxInterations" placeholder="Enter max interations"><br>
+
+    <label for="mutateFactor">Mutate Factor:</label>
+    <input type="number" id="mutateFactor" value="0.1" name="mutateFactor" placeholder="Enter mutate factor"><br>
+    {{#if renderOptionalInputs }}
+      <label for="numNetworks">Number of Networks:</label>
+      <input type="number" id="numNetworks" value="100" name="numNetworks" placeholder="Enter number of networks"><br>
+
+      <label for="errorThreshold">Error Threshold:</label>
+      <input type="number" id="errorThreshold" value="0.1" name="errorThreshold" placeholder="Enter error threshold"><br>
+
+      <label for="errorStagnationThreshold">Error Stagnation Threshold:</label>
+      <input type="number" id="errorStagnationThreshold" value="10" name="errorStagnationThreshold" placeholder="Enter error stagnation threshold"><br>
+
+      <label for="usePreviousData">Use Previous Data:</label>
+      <input type="checkbox" id="usePreviousData" name="usePreviousData"><br>
+    {{/if}}
+    <button type="button" onclick="addInputTarget()">Add Input/Target</button>
+
+    <table id="inputTargetTable" class="w3-table-all w3-hoverable">
+      <thead>
+        <tr class="w3-light-grey">
+          <th>Input</th>
+          <th>Target</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="text" value="[0,0]" name="input[]" placeholder="Enter input values"></td>
+          <td><input type="number" value="1" name="target[]" placeholder="Enter target values"></td>
+          <td><button onclick="removeRow(this)">Remove</button></td>
+        </tr>
+        <tr>
+          <td><input type="text" value="[0,1]" name="input[]" placeholder="Enter input values"></td>
+          <td><input type="number" value="0" name="target[]" placeholder="Enter target values"></td>
+          <td><button onclick="removeRow(this)">Remove</button></td>
+        </tr>
+        <tr>
+          <td><input type="text" value="[1,0]" name="input[]" placeholder="Enter input values"></td>
+          <td><input type="number" value="0" name="target[]" placeholder="Enter target values"></td>
+          <td><button onclick="removeRow(this)">Remove</button></td>
+        </tr>
+        <tr>
+          <td><input type="text" value="[1,1]" name="input[]" placeholder="Enter input values"></td>
+          <td><input type="number" value="1" name="target[]" placeholder="Enter target values"></td>
+          <td><button onclick="removeRow(this)">Remove</button></td>
+        </tr>
+      </tbody>
+    </table>
+  <button id="train-network">Train Neural Network</button>
+  </form>
+  <body>
+  <div id="chartContainer" style="height: 500px; width: 100%;">
+  </div>
+  <script type="text/javascript" src="https://cdn.canvasjs.com/canvasjs.min.js"></script>
+  <script type="text/javascript">
+      var data = []
+      var count = 0
+      var chart = new CanvasJS.Chart("chartContainer",
+      {
+        title:{
+          text: "Melhores individuos"
+        },
+        axisY: {
+          title: "Error Rate",
+          reversed: true
+        },
+        axisX: {
+          title: "Interations",
+        },
+        data: [{
+            type: "scatter",
+            dataPoints: data
+          }]
+      });
+      var updateChart = function (info) {
+        const input = info.input
+        const expected = info.expected
+        const output = info.response
+        const dataPoint = { x: ++count, y: 0 }
+        for (let i = 0; i < input.length; i++) {
+          dataPoint.y += Math.abs(expected[i] - output[i])
+        }
+        data.push(dataPoint)
+        chart.render();
+      };
+
+      function clearChart() {
+        data.length = 0;
+        chart.render();
+      }
+      chart.render();
+    
+  </script>
+</body>
+<!--
+SCRIPTS  
+-->
+  <script>
+    const canvas = document.getElementById('myCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth * 0.95;
+    const layers = {
+      input: {
+        neurons: [
+          {{#each neuralNetwork.data.inputLayer.neurons as |neuron index|}}
+            { value: {{neuron.value}}, weights: [{{#each neuron.weights as |weight|}}{{weight}},{{/each}}] },
+          {{/each}}
+        ]
+      },
+      hidden: {
+        neurons: [
+        {{#each neuralNetwork.data.hiddenLayers as |layer i|}}
+        {{#each layer.neurons as |neuron index|}}
+          { value: {{neuron.value}}, weights: [{{#each neuron.weights as |weight|}}{{weight}},{{/each}}] },
+        {{/each}}
+        {{/each}}
+        ]
+      },
+      output: {
+        neurons: [
+          {{#each neuralNetwork.data.outputLayer.neurons as |neuron index|}}
+          { value: {{neuron.value}}, weights: [{{#each neuron.weights as |weight|}}{{weight}},{{/each}}] },
+        {{/each}}
+        ],
+      },
+    };
+    const xData = [100, canvas.width / 2, canvas.width - 100];
+    const circles = [
+      layers.input.neurons.length,
+      layers.hidden.neurons.length,
+      layers.output.neurons.length,
+    ];
+    const circlesData = [
+      layers.input.neurons,
+      layers.hidden.neurons,
+      layers.output.neurons,
+    ];
+    // Desenha os círculos
+    function drawCircle(){
+      circles.forEach((quanty, index) => {
+        for (let i = 0; i < quanty; i++) {
+          const x = xData[index];
+          const y =
+            (canvas.height / quanty) * i + canvas.height / (2 * quanty);
+          let radius = canvas.height / ((1.2 * quanty) * 2);
+          if (radius > 50) radius = 50;
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, 2 * Math.PI);
+          ctx.stroke();
+          ctx.fillText(circlesData[index][i].value, x -(radius*.1), y);
+        }
+      });
+    }
+    drawCircle();
+
+    // Desenha as linhas
+    function drawLines(){
+
+      const inputNeurons = layers.input.neurons;
+      const hiddenNeurons = layers.hidden.neurons;
+      const outputNeurons = layers.output.neurons;
+
+      hiddenNeurons.forEach((hiddenNeuron, i) => {
+        inputNeurons.forEach((inputNeuron, j) => {
+          const inputRadius = canvas.height / ((1.2 * inputNeurons.length) * 2);
+          const hiddenRadius = canvas.height / ((1.2 * hiddenNeurons.length) * 2);
+          ctx.beginPath();
+          ctx.moveTo(
+            xData[0] + (inputRadius > 50 ? 50 : inputRadius),
+            (canvas.height / inputNeurons.length) * inputNeurons.indexOf(inputNeuron) +
+              canvas.height / (2 * inputNeurons.length)
+          );
+          ctx.lineTo(
+            xData[1] - (hiddenRadius > 50 ? 50 : hiddenRadius),
+            (canvas.height / hiddenNeurons.length) * hiddenNeurons.indexOf(hiddenNeuron) +
+              canvas.height / (2 * hiddenNeurons.length)
+          );
+          ctx.stroke();
+        });
+      });
+
+      outputNeurons.forEach((outputNeuron) => {
+        hiddenNeurons.forEach((hiddenNeuron) => {
+          const outputRadius = canvas.height / ((1.2 * outputNeurons.length) * 2);
+          const hiddenRadius = canvas.height / ((1.2 * hiddenNeurons.length) * 2);
+          ctx.beginPath();
+          ctx.moveTo(
+            xData[1] + (hiddenRadius > 50 ? 50 : hiddenRadius),
+            (canvas.height / hiddenNeurons.length) * hiddenNeurons.indexOf(hiddenNeuron) +
+              canvas.height / (2 * hiddenNeurons.length)
+          );
+          ctx.lineTo(
+            xData[2] - (outputRadius > 50 ? 50 : outputRadius),
+            (canvas.height / outputNeurons.length) * outputNeurons.indexOf(outputNeuron) +
+              canvas.height / (2 * outputNeurons.length)
+          );
+          ctx.stroke();
+        });
+      });
+    }
+    drawLines();
+  </script>
+
+  <script type="module">
+    import { io } from "https://cdn.socket.io/4.7.5/socket.io.esm.min.js";
+    const neuralNetworkId = "{{neuralNetwork.id}}";
+    const socket = io({
+      transports: ["websocket"],
+    });
+    socket.on("neural-network", (args) => {
+      updateChart(args);
+    });
+    socket.on("clear", (args) => {
+      clearChart();
+    });
+    document.getElementById('train-network').addEventListener('click', trainNeuralNetwork);
+    function trainNeuralNetwork(e) {
+      e.preventDefault();
+      const maxInterations = Number(document.getElementById('maxInterations').value);
+      const mutateFactor = Number(document.getElementById('mutateFactor').value);
+      const inputElements = document.getElementsByName('input[]');
+      const targetElements = document.getElementsByName('target[]');
+      const numNetworks = Number(document.getElementById('numNetworks')?.value);
+      const errorThreshold = Number(document.getElementById('errorThreshold')?.value);
+      const errorStagnationThreshold = Number(document.getElementById('errorStagnationThreshold')?.value);
+      const usePreviousData = document.getElementById('usePreviousData')?.checked;
+      const input = [];
+      const target = [];
+
+      for (let i = 0; i < inputElements.length; i++) {
+        input.push(JSON.parse(inputElements[i].value));
+        target.push(Number(targetElements[i].value));
+      }
+
+    
+      socket.emit("train", {
+        neuralNetworkId,
+        input,
+        target,
+        maxInterations,
+        mutateFactor,
+        ...({{ renderOptionalInputs }} && {
+          numNetworks,
+          errorThreshold,
+          errorStagnationThreshold,
+          usePreviousData,
+        }),
+      }
+    );
+    }
+  </script>
+
+</body>
+</html>

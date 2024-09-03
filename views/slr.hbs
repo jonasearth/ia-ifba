@@ -15,8 +15,6 @@
       },
       axisX: {
         title: "{{axilXName}}",
-        minimum: min,
-        maximum: max
       },
       axisY: {
         title: "{{axilYName}}",
@@ -38,18 +36,18 @@
           ]
         }
       ]
- });
-function calculate(
-    x,
-    intercept,
-    angularCoefficient
-  ) {
-    return (
-      intercept +
-      angularCoefficient * x
-    );
-  }
-chart.render();
+  });
+  function calculate(
+      x,
+      intercept,
+      angularCoefficient
+    ) {
+      return (
+        intercept +
+        angularCoefficient * x
+      );
+    }
+  chart.render();
 }
 </script>
 <script type="text/javascript" src="https://cdn.canvasjs.com/canvasjs.min.js"></script>

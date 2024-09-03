@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lista de Redes Neurais</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid black;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>Lista de Redes Neurais</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Tipo de Aprendizado</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each neuralNetworks}}
+      <tr>
+        <td>{{id}}</td>
+        <td>{{name}}</td>
+        <td>{{learningType}}</td>
+        <td><a href="./{{id}}">Ver detalhes</a></td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</body>
+</html>

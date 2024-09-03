@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppConfigService } from './app.env.service';
 import { migrations } from './libs/database/migrations';
 import { ConfigModule } from '@nestjs/config';
+import { NeuralNetworkModule } from './neural-network/neural-network.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ConfigModule } from '@nestjs/config';
       }),
       inject: [AppConfigService],
     }),
+    NeuralNetworkModule,
   ],
   controllers: [AppController],
   providers: [AppConfigService],
