@@ -111,7 +111,7 @@ export class NeuralNetworkController {
     @Param('id') neuralNetworkId: string,
     @Body()
     predictData: PredictNeuralNetworkInput,
-  ) {
+  ): Promise<number[][]> {
     return this.neuralNetworkService.predict(
       predictData.input,
       neuralNetworkId,
@@ -129,7 +129,7 @@ export class NeuralNetworkController {
   })
   @HttpCode(HttpStatus.OK)
   async findById(@Param('id') neuralNetworkId: string) {
-    return this.neuralNetworkService.findById(neuralNetworkId);
+    return await this.neuralNetworkService.findById(neuralNetworkId);
   }
 
   @Get('')
@@ -143,7 +143,7 @@ export class NeuralNetworkController {
   })
   @HttpCode(HttpStatus.OK)
   async findAll() {
-    return this.neuralNetworkService.findAll();
+    return await this.neuralNetworkService.findAll();
   }
 
   @Delete(':id')
@@ -156,6 +156,6 @@ export class NeuralNetworkController {
   })
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('id') neuralNetworkId: string) {
-    return this.neuralNetworkService.delete(neuralNetworkId);
+    return await this.neuralNetworkService.delete(neuralNetworkId);
   }
 }

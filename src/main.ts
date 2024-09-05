@@ -20,7 +20,6 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe(validationOptions));
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.setBaseViewsDir(join(__dirname, '..', 'views'));
-  app.useStaticAssets(join(__dirname, '..', 'public'));
   app.setViewEngine('hbs');
 
   await app.listen(3000);

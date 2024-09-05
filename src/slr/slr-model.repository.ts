@@ -6,14 +6,16 @@ import { SlrModelEntity } from './entities/slr-model.entity';
 @Injectable()
 export class SlrModelRepository {
   constructor(
-    @InjectRepository(SlrModelEntity)
-    private readonly slrModelRepository: Repository<SlrModelEntity>,
+    @InjectRepository(SlrModelEntity, 'reader')
+    private readonly slrModelRepositoryReader: Repository<SlrModelEntity>,
+    @InjectRepository(SlrModelEntity, 'writer')
+    private readonly slrModelRepositoryWriter: Repository<SlrModelEntity>,
   ) {}
 
   async list(
     where: FindOptionsWhere<SlrModelEntity>,
   ): Promise<SlrModelEntity[]> {
-    return await this.slrModelRepository.find({
+    return await this.slrModelRepositoryReader.find({
       where,
     });
   }
@@ -21,7 +23,7 @@ export class SlrModelRepository {
     id: string,
     loadRelations = false,
   ): Promise<SlrModelEntity | null> {
-    return await this.slrModelRepository.findOne({
+    return await this.slrModelRepositoryReader.findOne({
       where: { id },
       relations: loadRelations ? ['user'] : [],
     });
@@ -30,7 +32,7 @@ export class SlrModelRepository {
     name: string,
     loadRelations = false,
   ): Promise<SlrModelEntity | null> {
-    return await this.slrModelRepository.findOne({
+    return await this.slrModelRepositoryReader.findOne({
       where: { name },
       relations: loadRelations ? ['user'] : [],
     });
@@ -39,22 +41,22 @@ export class SlrModelRepository {
   async find(
     user: FindOptionsWhere<SlrModelEntity>,
   ): Promise<SlrModelEntity | null> {
-    return await this.slrModelRepository.findOne({ where: user });
+    return await this.slrModelRepositoryReader.findOne({ where: user });
   }
 
   async create(data: Partial<SlrModelEntity>): Promise<SlrModelEntity> {
-    return await this.slrModelRepository.save(data);
+    return await this.slrModelRepositoryWriter.save(data);
   }
 
   async update(
     id: string,
     data: Partial<SlrModelEntity>,
   ): Promise<SlrModelEntity | null> {
-    await this.slrModelRepository.update(id, data);
+    await this.slrModelRepositoryWriter.update(id, data);
     return await this.findById(id);
   }
 
   async delete(id: string): Promise<void> {
-    await this.slrModelRepository.softDelete(id);
+    await this.slrModelRepositoryWriter.softDelete(id);
   }
 }

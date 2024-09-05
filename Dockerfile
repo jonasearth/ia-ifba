@@ -14,6 +14,7 @@ WORKDIR /src
 ENV TZ=America/Sao_Paulo
 
 COPY --from=BASEIMAGE /src/dist /src/dist
+COPY --from=BASEIMAGE /src/views /src/views
 COPY --from=BASEIMAGE /src/node_modules /src/node_modules
 
 EXPOSE 3000

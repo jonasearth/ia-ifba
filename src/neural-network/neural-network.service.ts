@@ -23,16 +23,26 @@ export class NeuralNetworkService {
     private readonly neuralNetworkRepository: NeuralNetworkRepository,
   ) {}
 
-  async predict(input: number[][], neuralNetworkId: string) {
+  async predict(
+    input: number[][],
+    neuralNetworkId: string,
+    client?: Socket,
+  ): Promise<number[][]> {
     const neuralNetwork =
       await this.neuralNetworkRepository.findById(neuralNetworkId);
     if (!neuralNetwork) {
       throw new NotFoundException('Neural network not found!');
     }
     const neuralNetworkModel = NeuralNetwork.fromObject(neuralNetwork.data);
-    return input.map((input) =>
-      neuralNetworkModel.feedforward(input).map((value) => value.toFixed(8)),
-    );
+    const data = neuralNetworkModel.predict(input);
+    if (client) {
+      client.emit('neural-network-predict', {
+        id: neuralNetwork.id,
+        data,
+        status: 'done',
+      });
+    }
+    return data;
   }
   async train(payload: TrainNeuralNetworkInput) {
     const neuralNetwork = await this.neuralNetworkRepository.findById(
@@ -96,51 +106,49 @@ export class NeuralNetworkService {
     payload: TrainNeuralNetworkInput,
     client?: Socket,
   ) {
+    console.time('treinamento');
     const neuralNetworkModel = NeuralNetwork.fromObject(neuralNetwork.data);
 
-    for (let i = 0; i < payload.maxInterations; i++) {
-      const response = payload.input.map((input, index) => {
-        return neuralNetworkModel.train(
-          input,
-          [payload.target[index]],
-          payload.mutateFactor,
-        )[0];
-      });
+    for (let i = 0; i < (client ? payload.maxInterations : 1); i++) {
+      console.time('treinamento' + i);
+      const data = neuralNetworkModel.train(
+        payload.input,
+        payload.target,
+        client ? 1 : payload.maxInterations,
+      );
+      console.timeEnd('treinamento' + i);
+
       if (client) {
-        if (i % 100 === 0) {
+        if (i % 10 === 0) {
           client.emit('neural-network', {
             id: neuralNetwork.id,
             data: neuralNetworkModel.toObject(),
             status: 'learning',
             input: payload.input,
-            response,
-            expected: payload.target,
+            response: data.response,
+            error: data.err,
           });
         }
       }
     }
 
+    console.timeEnd('treinamento');
     neuralNetwork.data = neuralNetworkModel.toObject();
     await this.neuralNetworkRepository.update(neuralNetwork);
-    if (client)
-      client.emit('neural-network', {
-        id: neuralNetwork.id,
-        data: neuralNetworkModel.toObject(),
-        finalResponse: payload.input.map((input, i) => {
-          return {
-            input,
-            expected: payload.target[i],
-            predicted: neuralNetworkModel.feedforward(input),
-          };
-        }),
-        status: 'done',
-      });
-    return payload.input.map((input, index) => {
-      return {
-        predicted: neuralNetworkModel.feedforward(input),
-        expected: payload.target[index],
-      };
-    });
+    const response = {
+      id: neuralNetwork.id,
+      data: neuralNetworkModel.toObject(),
+      finalResponse: {
+        input: payload.input,
+        expected: payload.target,
+        predicted: neuralNetworkModel.feedforward(payload.input),
+      },
+      status: 'done',
+    };
+    if (client) {
+      client.emit('neural-network-done', response);
+    }
+    return response;
   }
 
   async trainGeneticAlgorithm(
@@ -148,158 +156,159 @@ export class NeuralNetworkService {
     payload: TrainNeuralNetworkInput,
     client?: Socket,
   ) {
-    console.log('Training with genetic algorithm');
-    const numNetworks = 100;
-    const maxIterations = 100000;
-    const mutateFactor = 0.01;
-    const errorThreshold = 0.01;
-    const errorStagnationThreshold = 10;
-    let lastError = Infinity;
-    let lastErrorCount = 0;
-    let lastBestNeuralNetwork: NeuralNetwork;
-    let bestNeuralNetwork: NeuralNetwork;
+    throw new Error('Not implemented yet');
+    // console.log('Training with genetic algorithm');
+    // const numNetworks = 100;
+    // const maxIterations = 100000;
+    // const mutateFactor = 0.01;
+    // const errorThreshold = 0.01;
+    // const errorStagnationThreshold = 10;
+    // let lastError = Infinity;
+    // let lastErrorCount = 0;
+    // let lastBestNeuralNetwork: NeuralNetwork;
+    // let bestNeuralNetwork: NeuralNetwork;
 
-    const neuralNetworks: NeuralNetwork[] = [];
-    const responses: number[][] = [];
+    // const neuralNetworks: NeuralNetwork[] = [];
+    // const responses: number[][] = [];
 
-    for (let j = 0; j < numNetworks; j++) {
-      const currentNeuralNetwork = new NeuralNetwork(
-        neuralNetwork.data.activationFunction,
-        payload.input[0].length,
-        neuralNetwork.data.hiddenLayers[0].neurons.length,
-        1,
-        1,
-      );
-      neuralNetworks.push(currentNeuralNetwork);
-      responses.push(
-        payload.input.map(
-          (entrada) => currentNeuralNetwork.feedforward(entrada)[0],
-        ),
-      );
-    }
+    // for (let j = 0; j < numNetworks; j++) {
+    //   const currentNeuralNetwork = new NeuralNetwork(
+    //     neuralNetwork.data.activationFunction,
+    //     payload.input[0].length,
+    //     neuralNetwork.data.hiddenLayers[0].neurons.length,
+    //     1,
+    //     1,
+    //   );
+    //   neuralNetworks.push(currentNeuralNetwork);
+    //   responses.push(
+    //     payload.input.map(
+    //       (entrada) => currentNeuralNetwork.feedforward2(entrada)[0],
+    //     ),
+    //   );
+    // }
 
-    for (let i = 0; i < maxIterations; i++) {
-      const errors = responses.map((response, i) => {
-        const diffs = response.map((value, j) =>
-          Math.abs(value - Math.abs(payload.target[j])),
-        );
-        const error = Math.max(...diffs);
-        const soma = diffs.reduce((acc, curr) => acc + curr, 0);
-        return { error: error > 0.8 ? Infinity : soma, i };
-      });
+    // for (let i = 0; i < maxIterations; i++) {
+    //   const errors = responses.map((response, i) => {
+    //     const diffs = response.map((value, j) =>
+    //       Math.abs(value - Math.abs(payload.target[j])),
+    //     );
+    //     const error = Math.max(...diffs);
+    //     const soma = diffs.reduce((acc, curr) => acc + curr, 0);
+    //     return { error: error > 0.8 ? Infinity : soma, i };
+    //   });
 
-      const best = errors.reduce((prev, curr) =>
-        curr.error < prev.error ? curr : prev,
-      );
+    //   const best = errors.reduce((prev, curr) =>
+    //     curr.error < prev.error ? curr : prev,
+    //   );
 
-      if (best.error === lastError) {
-        lastErrorCount++;
-      } else {
-        lastErrorCount = 0;
-        lastError = best.error;
-      }
+    //   if (best.error === lastError) {
+    //     lastErrorCount++;
+    //   } else {
+    //     lastErrorCount = 0;
+    //     lastError = best.error;
+    //   }
 
-      bestNeuralNetwork = neuralNetworks[best.i];
+    //   bestNeuralNetwork = neuralNetworks[best.i];
 
-      if (best.error < errorThreshold) {
-        lastBestNeuralNetwork = bestNeuralNetwork;
-        neuralNetwork.data = bestNeuralNetwork.toObject();
-        await this.neuralNetworkRepository.update(neuralNetwork);
-        console.log('Best neural network found');
-        payload.input.forEach((entrada) =>
-          console.log(
-            lastBestNeuralNetwork.feedforward(entrada)[0].toFixed(20),
-          ),
-        );
-        client.emit('neural-network-done', {
-          id: neuralNetwork.id,
-          data: bestNeuralNetwork.toObject(),
-          status: 'learning',
-          finalResponse: payload.input.map((input, i) => {
-            return {
-              input,
-              expected: payload.target[i],
-              predicted: bestNeuralNetwork.feedforward(input),
-            };
-          }),
-        });
-        return;
-      }
+    //   if (best.error < errorThreshold) {
+    //     lastBestNeuralNetwork = bestNeuralNetwork;
+    //     neuralNetwork.data = bestNeuralNetwork.toObject();
+    //     await this.neuralNetworkRepository.update(neuralNetwork);
+    //     console.log('Best neural network found');
+    //     payload.input.forEach((entrada) =>
+    //       console.log(
+    //         lastBestNeuralNetwork.feedforward2(entrada)[0].toFixed(20),
+    //       ),
+    //     );
+    //     client.emit('neural-network-done', {
+    //       id: neuralNetwork.id,
+    //       data: bestNeuralNetwork.toObject(),
+    //       status: 'learning',
+    //       finalResponse: payload.input.map((input, i) => {
+    //         return {
+    //           input,
+    //           expected: payload.target[i],
+    //           predicted: bestNeuralNetwork.feedforward2(input),
+    //         };
+    //       }),
+    //     });
+    //     return;
+    //   }
 
-      neuralNetworks.length = 0;
-      responses.length = 0;
+    //   neuralNetworks.length = 0;
+    //   responses.length = 0;
 
-      if (lastErrorCount < errorStagnationThreshold) {
-        neuralNetworks.push(bestNeuralNetwork);
-        responses.push(
-          payload.input.map(
-            (entrada) => bestNeuralNetwork.feedforward(entrada)[0],
-          ),
-        );
-      } else {
-        const newNetwork = new NeuralNetwork(
-          neuralNetwork.data.activationFunction,
-          payload.input[0].length,
-          neuralNetwork.data.hiddenLayers[0].neurons.length,
-          1,
-          1,
-        );
-        neuralNetworks.push(newNetwork);
-        responses.push(
-          payload.input.map((entrada) => newNetwork.feedforward(entrada)[0]),
-        );
-      }
+    //   if (lastErrorCount < errorStagnationThreshold) {
+    //     neuralNetworks.push(bestNeuralNetwork);
+    //     responses.push(
+    //       payload.input.map(
+    //         (entrada) => bestNeuralNetwork.feedforward2(entrada)[0],
+    //       ),
+    //     );
+    //   } else {
+    //     const newNetwork = new NeuralNetwork(
+    //       neuralNetwork.data.activationFunction,
+    //       payload.input[0].length,
+    //       neuralNetwork.data.hiddenLayers[0].neurons.length,
+    //       1,
+    //       1,
+    //     );
+    //     neuralNetworks.push(newNetwork);
+    //     responses.push(
+    //       payload.input.map((entrada) => newNetwork.feedforward2(entrada)[0]),
+    //     );
+    //   }
 
-      for (let j = 1; j < numNetworks; j++) {
-        let newNeuralNetwork: NeuralNetwork;
+    //   for (let j = 1; j < numNetworks; j++) {
+    //     let newNeuralNetwork: NeuralNetwork;
 
-        if (
-          j <= numNetworks * 0.8 &&
-          lastErrorCount < errorStagnationThreshold
-        ) {
-          newNeuralNetwork = bestNeuralNetwork.clone();
-          newNeuralNetwork.mutate(mutateFactor * i);
-        } else {
-          newNeuralNetwork = new NeuralNetwork(
-            neuralNetwork.data.activationFunction,
-            payload.input[0].length,
-            neuralNetwork.data.hiddenLayers[0].neurons.length,
-            1,
-            1,
-          );
-        }
+    //     if (
+    //       j <= numNetworks * 0.8 &&
+    //       lastErrorCount < errorStagnationThreshold
+    //     ) {
+    //       newNeuralNetwork = bestNeuralNetwork.clone();
+    //       newNeuralNetwork.mutate(mutateFactor);
+    //     } else {
+    //       newNeuralNetwork = new NeuralNetwork(
+    //         neuralNetwork.data.activationFunction,
+    //         payload.input[0].length,
+    //         neuralNetwork.data.hiddenLayers[0].neurons.length,
+    //         1,
+    //         1,
+    //       );
+    //     }
 
-        neuralNetworks.push(newNeuralNetwork);
-        const response = payload.input.map((entrada) => {
-          return newNeuralNetwork.feedforward(entrada)[0];
-        });
-        if (client) {
-          await new Promise((r) => setTimeout(r, 1));
-          client.emit('neural-network', {
-            id: neuralNetwork.id,
-            data: bestNeuralNetwork.toObject(),
-            status: 'learning',
-            input: payload.input,
-            response,
-            expected: payload.target,
-          });
-        }
-        responses.push(response);
-      }
-      if (client) {
-        client.emit('clear');
-      }
-      lastBestNeuralNetwork = bestNeuralNetwork;
-    }
+    //     neuralNetworks.push(newNeuralNetwork);
+    //     const response = payload.input.map((entrada) => {
+    //       return newNeuralNetwork.feedforward2(entrada)[0];
+    //     });
+    //     if (client) {
+    //       await new Promise((r) => setTimeout(r, 1));
+    //       client.emit('neural-network', {
+    //         id: neuralNetwork.id,
+    //         data: bestNeuralNetwork.toObject(),
+    //         status: 'learning',
+    //         input: payload.input,
+    //         response,
+    //         expected: payload.target,
+    //       });
+    //     }
+    //     responses.push(response);
+    //   }
+    //   if (client) {
+    //     client.emit('clear');
+    //   }
+    //   lastBestNeuralNetwork = bestNeuralNetwork;
+    // }
 
-    console.log('Last Best neural network found');
-    console.log(lastBestNeuralNetwork.outputLayer.getNeurons());
-    return payload.input.map((input, index) => {
-      return {
-        predicted: bestNeuralNetwork.feedforward(input),
-        expected: payload.target[index],
-      };
-    });
+    // console.log('Last Best neural network found');
+    // console.log(lastBestNeuralNetwork.outputLayer.getNeurons());
+    // return payload.input.map((input, index) => {
+    //   return {
+    //     predicted: bestNeuralNetwork.feedforward2(input),
+    //     expected: payload.target[index],
+    //   };
+    // });
   }
 
   async create(
@@ -341,6 +350,7 @@ export class NeuralNetworkService {
   }
   async delete(id: string) {
     const neuralNetwork = await this.neuralNetworkRepository.findById(id);
+    console.log(neuralNetwork);
     if (!neuralNetwork) {
       throw new NotFoundException('Neural network not found!');
     }

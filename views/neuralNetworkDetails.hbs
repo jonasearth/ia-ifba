@@ -18,10 +18,9 @@
         <th>Neuron</th>
         <th>Value</th>
         <th>Weights</th>
-        <th>Bias</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="table-network-data">
       {{#each neuralNetwork.data.inputLayer.neurons as |neuron index|}}
       <tr>
         <td>INPUT</td>
@@ -32,7 +31,6 @@
           <span>{{weight}}</span>
         {{/each}}
         </td>
-        <td>{{neuron.bias}}</td>
       </tr>
       {{/each}}
       
@@ -47,7 +45,6 @@
                 <span>INPUT {{index2}} [{{weight}}],</span>
               {{/each}}
               </td>
-              <td>{{neuron.bias}}</td>
             </tr>
           {{/each}}
         {{/each}}
@@ -62,7 +59,6 @@
               <span>HIDDEN {{index2}} [{{weight}}],</span>
             {{/each}}
             </td>
-            <td>{{neuron.bias}}</td>
           </tr>
         {{/each}}
     </tbody>
@@ -136,6 +132,8 @@
       </tbody>
     </table>
   <button id="train-network">Train Neural Network</button>
+  <button id="predict-response">Predict Response</button>
+
   </form>
   <body>
   <div id="chartContainer" style="height: 500px; width: 100%;">
@@ -162,13 +160,11 @@
           }]
       });
       var updateChart = function (info) {
-        const input = info.input
-        const expected = info.expected
-        const output = info.response
+        const error = info.error
         const dataPoint = { x: ++count, y: 0 }
-        for (let i = 0; i < input.length; i++) {
-          dataPoint.y += Math.abs(expected[i] - output[i])
-        }
+        for (let i = 0; i < error.length; i++) {
+          dataPoint.y += Math.abs(error[i][0])  
+      }
         data.push(dataPoint)
         chart.render();
       };
@@ -179,6 +175,49 @@
       }
       chart.render();
     
+      function updateTable(neuralNetwork){
+        const table = document.getElementById("table-network-data");
+        table.innerHTML = '';
+        const inputLayer = neuralNetwork.data.inputLayer;
+        const hiddenLayers = neuralNetwork.data.hiddenLayers;
+        const outputLayer = neuralNetwork.data.outputLayer;
+        inputLayer.neurons.forEach((neuron, index) => {
+          const row = table.insertRow();
+          row.innerHTML = `<tr>
+            <td>INPUT</td>
+            <td>${index}</td>
+            <td>${neuron.value}</td>
+            <td>
+              ${neuron.weights.map(weight => `<span>${weight}</span>`).join(', ')}
+            </td>
+            </tr>
+          `;
+        });
+        hiddenLayers.forEach((layer, layerIndex) => {
+          layer.neurons.forEach((neuron, index) => {
+            const row = table.insertRow();
+            row.innerHTML = `<tr>
+              <td>HIDDEN</td>
+              <td>${index}</td>
+              <td>${neuron.value}</td>
+              <td>
+                ${neuron.weights.map((weight, index2) => `<span>INPUT ${index2} [${weight}]</span>`).join(', ')}
+              </td></tr>
+            `;
+          });
+        });
+        outputLayer.neurons.forEach((neuron, index) => {
+          const row = table.insertRow();
+          row.innerHTML = `<tr>
+            <td>OUTPUT</td>
+            <td>${index}</td>
+            <td>${neuron.value}</td>
+            <td>
+              ${neuron.weights.map((weight, index2) => `<span>HIDDEN ${index2} [${weight}]</span>`).join(', ')}
+            </td></tr>
+          `;
+        });
+      }
   </script>
 </body>
 <!--
@@ -289,6 +328,18 @@ SCRIPTS
       });
     }
     drawLines();
+    function updateCircles(neuralNetwork){
+      const inputNeurons = neuralNetwork.data.inputLayer.neurons;
+      const hiddenNeurons = neuralNetwork.data.hiddenLayers[0].neurons;
+      const outputNeurons = neuralNetwork.data.outputLayer.neurons;
+      circlesData[0] = inputNeurons;
+      circlesData[1] = hiddenNeurons;
+      circlesData[2] = outputNeurons;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawCircle();
+      drawLines();
+      
+    }
   </script>
 
   <script type="module">
@@ -299,6 +350,11 @@ SCRIPTS
     });
     socket.on("neural-network", (args) => {
       updateChart(args);
+      updateTable(args);
+      updateCircles(args);
+    });
+    socket.on("neural-network-predict", (args) => {
+      alert('Resposta do modelo: \n' + args.data.map(value => value.map(v => v.toFixed(2)).join(', ')).join('\n'));
     });
     socket.on("clear", (args) => {
       clearChart();
@@ -314,15 +370,13 @@ SCRIPTS
       const errorThreshold = Number(document.getElementById('errorThreshold')?.value);
       const errorStagnationThreshold = Number(document.getElementById('errorStagnationThreshold')?.value);
       const usePreviousData = document.getElementById('usePreviousData')?.checked;
-      const input = [];
-      const target = [];
+      let input = [];
+      let target = [];
 
       for (let i = 0; i < inputElements.length; i++) {
         input.push(JSON.parse(inputElements[i].value));
         target.push(Number(targetElements[i].value));
       }
-
-    
       socket.emit("train", {
         neuralNetworkId,
         input,
@@ -335,8 +389,22 @@ SCRIPTS
           errorStagnationThreshold,
           usePreviousData,
         }),
+      });
+    }
+    document.getElementById('predict-response').addEventListener('click', predictResponse);
+    function predictResponse(e) {
+      
+      e.preventDefault();
+      const inputElements = document.getElementsByName('input[]');
+      let input = [];
+      for (let i = 0; i < inputElements.length; i++) {
+        input.push(JSON.parse(inputElements[i].value));
       }
-    );
+      
+      socket.emit("predict", {
+        neuralNetworkId,
+        input,
+      });
     }
   </script>
 

@@ -8,7 +8,10 @@ import { NeuralNetworkSocketService } from './socket/neural-network.socket.servi
 import { NeuralNetworkSocketGateway } from './socket/neural-network.socket.gateway';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([NeuralNetworkEntity])],
+  imports: [
+    TypeOrmModule.forFeature([NeuralNetworkEntity], 'reader'),
+    TypeOrmModule.forFeature([NeuralNetworkEntity], 'writer'),
+  ],
   providers: [
     NeuralNetworkService,
     NeuralNetworkRepository,

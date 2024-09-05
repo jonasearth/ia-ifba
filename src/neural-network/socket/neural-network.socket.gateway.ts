@@ -39,11 +39,20 @@ export class NeuralNetworkSocketGateway
 
   @SubscribeMessage('train')
   @UsePipes(new ValidationPipe())
-  async handleMessage(
+  async handleTrain(
     client: Socket,
     payload: TrainNeuralNetworkInput,
   ): Promise<void> {
-    console.log(`Message from client ${client.id}: ${payload}`);
+    console.log(`Message from client ${client.id}: ${JSON.stringify(payload)}`);
     await this.socketService.train(client, payload);
+  }
+
+  @SubscribeMessage('predict')
+  async handlePredict(
+    client: Socket,
+    payload: TrainNeuralNetworkInput,
+  ): Promise<void> {
+    console.log(`Message from client ${client.id}: ${JSON.stringify(payload)}`);
+    await this.socketService.predict(client, payload);
   }
 }

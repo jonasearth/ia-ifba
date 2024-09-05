@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ia-ifba.fullname" . }}-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: lets-encrypt
+    ingress.kubernetes.io/cache-enable: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "cache-control: public, must-revalidate, proxy-revalidate";
+      more_set_headers "pragma: public";
+      expires 1M;
+      rewrite ^/SUB_PATH(/?)(.*)$ /$2 break;
+      rewrite /(.*)$ /$1 break;
+spec:
+  tls:
+  - hosts:
+    - {{ include "ia-ifba.fullname" . }}.dev.k8s.dev-league.com
+    secretName: {{ include "ia-ifba.fullname" . }}-ingress-tls
+  rules:
+  - host: {{ include "ia-ifba.fullname" . }}.dev.k8s.dev-league.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: {{ include "ia-ifba.fullname" . }}
+            port:
+              number: {{ .Values.service.port }}
+        path: /
+        pathType: Prefix

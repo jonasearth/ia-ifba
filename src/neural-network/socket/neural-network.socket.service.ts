@@ -9,6 +9,23 @@ import { LearningTypeEnum, NeuralNetworkData } from '../dto/neural-network.dto';
 export class NeuralNetworkSocketService {
   constructor(private readonly neuralNetworkService: NeuralNetworkService) {}
 
+  async predict(
+    client: Socket,
+    payload: TrainNeuralNetworkInput,
+  ): Promise<void> {
+    const neuralNetwork = await this.neuralNetworkService.findById(
+      payload.neuralNetworkId,
+    );
+    if (!neuralNetwork) {
+      throw new WsException('Neural network not found!');
+    }
+    await this.neuralNetworkService.predict(
+      payload.input,
+      neuralNetwork.id,
+      client,
+    );
+  }
+
   async train(client: Socket, payload: TrainNeuralNetworkInput): Promise<void> {
     const neuralNetwork = await this.neuralNetworkService.findById(
       payload.neuralNetworkId,

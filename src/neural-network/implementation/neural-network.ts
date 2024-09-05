@@ -120,139 +120,173 @@ export class NeuralNetwork {
    * If not provided, the method will use the default learning rate.
    */
 
-  somaMatrizEscalar(m, e) {
-    return m.map((v) => v.map((x) => parseFloat(x) + parseFloat(e)));
-  }
-  subtraiEscalarMatriz(e, m) {
-    return m.map((v) => v.map((x) => parseFloat(e) - parseFloat(x)));
-  }
-  somaMatriz(m1, m2) {
+  subtractMatrix(m1: number[][], m2: number[][]): number[][] {
     return m1.map((v1, linha) =>
-      v1.map(
-        (x, coluna) =>
-          parseFloat(m1[linha][coluna]) + parseFloat(m2[linha][coluna]),
-      ),
+      v1.map((x, coluna) => m1[linha][coluna] - m2[linha][coluna]),
     );
   }
-  subtraiMatriz(m1, m2) {
-    return m1.map((v1, linha) =>
-      v1.map(
-        (x, coluna) =>
-          parseFloat(m1[linha][coluna]) - parseFloat(m2[linha][coluna]),
-      ),
-    );
-  }
-  produtoEscalarVetor(a, b) {
-    return [a.map((x, index) => a[index] * b[index]).reduce((m, n) => m + n)];
-  }
-  produtoEscalar(a, b) {
+  productScalar(a: number[][], b: number[][]): number[][] {
     return a.map((x) =>
-      this.transpose(b).map((y) => this.produtoEscalarVetor(x, y)),
-    );
-  }
-  multiplicaMatriz(m1, m2) {
-    return m1.map((v1, linha) =>
-      v1.map(
-        (x, coluna) =>
-          parseFloat(m1[linha][coluna]) * parseFloat(m2[linha][coluna]),
+      this.transpose(b).map((y) =>
+        x.map((c, index) => x[index] * y[index]).reduce((m, n) => m + n),
       ),
     );
   }
-  sigmoid(m: number[][]) {
-    return m.map((v) => v.map((x) => 1 / (1 + Math.pow(Math.E, -x))));
+  multiplyMatrix(m1: number[][], m2: number[][]): number[][] {
+    return m1.map((v1, linha) =>
+      v1.map((x, coluna) => m1[linha][coluna] * m2[linha][coluna]),
+    );
   }
-  derivadaSigmoid(a) {
-    return this.multiplicaMatriz(a, this.subtraiEscalarMatriz(1, a));
+  applyActivationFunctionMatrix(m: number[][]): number[][] {
+    return m.map((v) =>
+      v.map((x) => {
+        const a = this.applyActivationFunction(x);
+        return a;
+      }),
+    );
   }
-  geraMatrizPesos(numLinhas, numColunas) {
-    const pesos = [];
-    for (let i = 0; i < numLinhas; i++) {
-      const linha = [];
-      for (let j = 0; j < numColunas; j++) {
-        const peso = Math.random()*2 - 1;
-        linha.push(peso);
-      }
-      pesos.push(linha);
+  derivateMatrix(a: number[][]): number[][] {
+    return this.multiplyMatrix(
+      a,
+      a.map((v) => v.map((x) => this.derivateActivationFunction(x))),
+    );
+  }
+
+  applyActivationFunction(n: number): number {
+    switch (this.activationFunction) {
+      case ActivationFunctionEnum.SIGMOID:
+        return ActivationFunctions.sigmoid(n);
+      case ActivationFunctionEnum.TANH:
+        return ActivationFunctions.tanh(n);
+      case ActivationFunctionEnum.LINEAR:
+        return ActivationFunctions.linear(n);
+      case ActivationFunctionEnum.RELU:
+        return ActivationFunctions.relu(n);
+      default:
+        throw new Error('Função de ativação desconhecida!');
     }
-    return pesos;
+  }
+
+  derivateActivationFunction(n: number) {
+    switch (this.activationFunction) {
+      case ActivationFunctionEnum.SIGMOID:
+        return ActivationFunctions.dsigmoid(n);
+      case ActivationFunctionEnum.TANH:
+        return ActivationFunctions.dtanh(n);
+      case ActivationFunctionEnum.LINEAR:
+        return ActivationFunctions.dlinear();
+      case ActivationFunctionEnum.RELU:
+        return ActivationFunctions.drelu(n);
+      default:
+        throw new Error('Função de ativação desconhecida!');
+    }
+  }
+  predict(inputs: number[][]): number[][] {
+    return this.feedforward(inputs).response;
+  }
+  feedforward(inputs: number[][]): {
+    response: number[][];
+    hiddenResponse: number[][];
+    hiddenWeights: number[][];
+    outputWeights: number[][];
+  } {
+    const hiddenWeights = this.transpose(
+      this.hiddenLayers[0].getNeurons().map((neuron) => neuron.getWeights()),
+    );
+    const outputWeights = this.transpose(
+      this.outputLayer.getNeurons().map((neuron) => neuron.getWeights()),
+    );
+    const hiddenResponse = this.applyActivationFunctionMatrix(
+      this.productScalar(inputs, hiddenWeights),
+    );
+
+    const response = this.applyActivationFunctionMatrix(
+      this.productScalar(hiddenResponse, outputWeights),
+    );
+    return {
+      response,
+      hiddenResponse,
+      hiddenWeights,
+      outputWeights,
+    };
   }
   train(
-    inputs: number[] | number[][],
+    inputs: number[][],
     targets?: number[],
-    learningRate?: number,
-  ): number[] {
-    const y_esperado = this.transpose([targets]);
-    let y = null;
-    let pesosHidden = this.geraMatrizPesos(2, 30);
-    // let pesosHidden2 = this.geraMatrizPesos(30, 30);
-    let pesosCamadaOut = this.geraMatrizPesos(30, 1);
-    for (let index = 0; index < 100000; index++) {
-      const z = this.sigmoid(this.produtoEscalar(inputs, pesosHidden));
-
-      y = this.sigmoid(this.produtoEscalar(z, pesosCamadaOut));
-
-      const erro = this.subtraiMatriz(y, y_esperado);
-
-      const derivadaY = this.derivadaSigmoid(y);
-      const derivadaZ = this.derivadaSigmoid(z);
-
-      const deltaPesosOut = this.produtoEscalar(
-        this.transpose(z),
-        this.multiplicaMatriz(erro, derivadaY),
+    interations: number = 10000,
+  ): {
+    response: number[][];
+    err: number[][];
+  } {
+    const expected = this.transpose([targets]);
+    // obtendo os pesos da camada escondida
+    let hiddenWeights = this.transpose(
+      this.hiddenLayers[0].getNeurons().map((neuron) => neuron.getWeights()),
+    );
+    let response = null;
+    // obtendo os pesos da camada de saida
+    let outputWeights = this.transpose(
+      this.outputLayer.getNeurons().map((neuron) => neuron.getWeights()),
+    );
+    let hiddenResponse: number[][];
+    for (let index = 0; index < interations; index++) {
+      // Propaga os valores de entrada para as camadas escondidas
+      hiddenResponse = this.applyActivationFunctionMatrix(
+        this.productScalar(inputs, hiddenWeights),
       );
-      const deltaPesosHidden = this.produtoEscalar(
-        this.transpose(inputs as number[][]),
-        this.multiplicaMatriz(
-          this.produtoEscalar(
-            this.multiplicaMatriz(erro, derivadaY),
-            this.transpose(pesosCamadaOut),
+      // Propaga os valores da camada escondida para a camada de saida
+      response = this.applyActivationFunctionMatrix(
+        this.productScalar(hiddenResponse, outputWeights),
+      );
+      // Calcula o erro
+      const error = this.subtractMatrix(response, expected);
+      // Calcula a derivada da resposta
+      const derivativeResponse = this.derivateMatrix(response);
+      // Calcula a derivada da camada escondida
+      const derivadaHiddenResponse = this.derivateMatrix(hiddenResponse);
+      // Calcula o delta dos pesos da camada de saida
+      const deltaPesosOut = this.productScalar(
+        this.transpose(hiddenResponse),
+        this.multiplyMatrix(error, derivativeResponse),
+      );
+      // Calcula o delta dos pesos da camada escondida
+      const deltaPesosHidden = this.productScalar(
+        this.transpose(inputs),
+        this.multiplyMatrix(
+          this.productScalar(
+            this.multiplyMatrix(error, derivativeResponse),
+            this.transpose(outputWeights),
           ),
-          derivadaZ,
+          derivadaHiddenResponse,
         ),
       );
-      pesosCamadaOut = this.subtraiMatriz(pesosCamadaOut, deltaPesosOut);
-      pesosHidden = this.subtraiMatriz(pesosHidden, deltaPesosHidden);
-      // pesosHidden2 = this.subtraiMatriz(pesosHidden2, deltaPesosHidden2);
+      // Atualiza os pesos da camada de saida
+      outputWeights = this.subtractMatrix(outputWeights, deltaPesosOut);
+      // Atualiza os pesos da camada escondida
+      hiddenWeights = this.subtractMatrix(hiddenWeights, deltaPesosHidden);
     }
-    console.log(
-      'Saída após o treinamento: ',
-      y.map((v) => v.map((x) => x.toFixed(20))),
+
+    const transposedResponse = this.transpose(response);
+    // Atualiza os pesos e valores dos neuronios da camada escondida
+    this.transpose(hiddenWeights).forEach((neuron, index) => {
+      this.hiddenLayers[0].getNeuron(index).setWeights(neuron);
+    });
+    hiddenResponse[hiddenResponse.length - 1].forEach((v, i) =>
+      this.hiddenLayers[0].getNeuron(i).setValue(v),
     );
-    console.log(
-      'Erro: ',
-      this.subtraiMatriz(y, y_esperado).map((v) => v.map((x) => x.toFixed(20))),
-    );
 
-    // Adiciona os valores de entrada na camada de entrada
+    // Atualiza os pesos e valores dos neuronios da camada de saida
+    this.outputLayer
+      .getNeuron(0)
+      .setValue(transposedResponse[0][transposedResponse[0].length - 1]);
+    this.transpose(outputWeights).forEach((neuron, index) => {
+      this.outputLayer.getNeuron(index).setWeights(neuron);
+    });
 
-    // this.feedforward(inputs);
-
-    // // Calcula o erro da camada de saida
-    // this.calculateOutputLayerDelta(targets);
-
-    // // Ajusta pesos e bias para a camada de saida
-    // this.adjustWeightsAndBiases(
-    //   this.outputLayer,
-    //   this.hiddenLayers[this.hiddenLayers.length - 1],
-    //   learningRate,
-    // );
-
-    // for (let i = this.hiddenLayers.length - 1; i >= 0; i--) {
-    //   const currentLayer = this.hiddenLayers[i];
-    //   const nextLayer =
-    //     i === this.hiddenLayers.length - 1
-    //       ? this.outputLayer
-    //       : this.hiddenLayers[i + 1];
-    //   // Calcula o erro da camada escondida atual
-    //   this.calculateHiddenLayerDelta(currentLayer, nextLayer);
-
-    //   const previousLayer =
-    //     i === 0 ? this.inputLayer : this.hiddenLayers[i - 1];
-
-    //   // Ajusta pesos e bias para a camada atual
-    //   this.adjustWeightsAndBiases(currentLayer, previousLayer, learningRate);
-    // }
-    return this.outputLayer.getNeurons().map((neuron) => neuron.getValue());
+    return {
+      response,
+      err: this.subtractMatrix(response, expected),
+    };
   }
 
   /**
@@ -292,75 +326,13 @@ export class NeuralNetwork {
       });
     });
   }
-  /**
-   * Calculates the delta of the current hidden layer based on the next layer.
-   * @param currentLayer The current hidden layer.
-   * @param nextLayer The next hidden layer.
-  //  */
-  // calculateHiddenLayerDelta(currentLayer: Layer, nextLayer: Layer): void {
-  //   for (let j = 0; j < currentLayer.getNeurons().length; j++) {
-  //     let sum = 0;
-  //     for (let k = 0; k < nextLayer.getNeurons().length; k++) {
-  //       const nextNeuron = nextLayer.getNeuron(k);
-  //       const weight = nextNeuron.getWeight(j);
-  //       const delta = nextNeuron.getDelta(); // O delta do próximo neurônio
-  //       sum += weight * delta;
-  //     }
-  //     const currentNeuron = currentLayer.getNeuron(j);
-  //     let derivative: number;
-  //     switch (this.activationFunction) {
-  //       case ActivationFunctionEnum.SIGMOID:
-  //         derivative = ActivationFunctions.dsigmoid(currentNeuron.getValue());
-  //         break;
-  //       case ActivationFunctionEnum.TANH:
-  //         derivative = ActivationFunctions.dtanh(currentNeuron.getValue());
-  //         break;
-  //       case ActivationFunctionEnum.LINEAR:
-  //         derivative = ActivationFunctions.dlinear();
-  //         break;
-  //       default:
-  //         throw new Error('Função de ativação desconhecida!');
-  //     }
-  //     const currentDelta = sum * derivative;
-  //     currentNeuron.setDelta(currentDelta);
-  //   }
-  // }
-  // /**
-  //  * Adjusts the weights and bias of a layer based on the error and the learning rate.
-  //  * @param layer The current layer.
-  //  * @param previousLayer The previous layer.
-  //  * @param learningRate The learning rate.
-  //  */
-  // adjustWeightsAndBiases(
-  //   layer: Layer,
-  //   previousLayer: Layer,
-  //   learningRate: number,
-  // ): void {
-  //   for (let j = 0; j < layer.getNeurons().length; j++) {
-  //     const neuron = layer.getNeuron(j);
-
-  //     // Ajuste dos pesos
-  //     for (let i = 0; i < neuron.getWeights().length; i++) {
-  //       const previousNeuronValue = previousLayer.getNeuron(i).getValue();
-  //       const oldWeight = neuron.getWeight(i);
-  //       const newWeight =
-  //         oldWeight + learningRate * neuron.getDelta() * previousNeuronValue;
-  //       neuron.setWeight(newWeight, i);
-  //     }
-
-  //     // Ajuste do bias
-  //     const oldBias = neuron.getBias();
-  //     const newBias = oldBias + learningRate * neuron.getDelta();
-  //     neuron.setBias(newBias);
-  //   }
-  // }
 
   /**
    * Performs the forward propagation of the neural network based on the input values.
    * @param inputs Input values.
    * @returns Output values of the neural network.
    */
-  feedforward(inputs: number[]): number[] {
+  feedforward2(inputs: number[]): number[] {
     this.inputLayer.setNeuronsValues(inputs);
 
     // Propaga os valores de entrada para as camadas escondidas
@@ -525,11 +497,18 @@ export class ActivationFunctions {
   static dlinear(): number {
     return 1;
   }
+  static relu(x: number): number {
+    return Math.max(0, x);
+  }
+  static drelu(x: number): number {
+    return x > 0 ? 1 : 0;
+  }
 }
 export enum ActivationFunctionEnum {
   TANH = 'TANH',
   SIGMOID = 'SIGMOID',
   LINEAR = 'LINEAR',
+  RELU = 'RELU',
 }
 export class Layer {
   private neurons: Neuron[];
@@ -713,9 +692,8 @@ export class Neuron {
     if (weights !== undefined) {
       this.weights = weights;
     } else {
-      const scaleFactor = Math.sqrt(1 / weightLength); // Para normalização
       for (let i = 0; i < weightLength; i++) {
-        this.weights.push((Math.random() * 2 - 1) * scaleFactor);
+        this.weights.push(Math.random() * 2 - 1);
       }
     }
   }
@@ -738,6 +716,9 @@ export class Neuron {
         break;
       case ActivationFunctionEnum.LINEAR:
         this.value = ActivationFunctions.linear(this.value);
+        break;
+      case ActivationFunctionEnum.RELU:
+        this.value = ActivationFunctions.relu(this.value);
         break;
     }
   }

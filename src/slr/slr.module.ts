@@ -8,7 +8,10 @@ import { SlrModelDataRepository } from './slr-model-data.repository';
 import { SlrModelDataEntity } from './entities/slr-model-data.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SlrModelEntity, SlrModelDataEntity])],
+  imports: [
+    TypeOrmModule.forFeature([SlrModelEntity, SlrModelDataEntity], 'reader'),
+    TypeOrmModule.forFeature([SlrModelEntity, SlrModelDataEntity], 'writer'),
+  ],
   controllers: [SlrController],
   providers: [SlrService, SlrModelRepository, SlrModelDataRepository],
 })
