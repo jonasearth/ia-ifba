@@ -71,36 +71,36 @@ export class SlrController {
     return await this.slrService.appendData(slrModelId, body);
   }
 
-  @ApiOperation({ summary: 'Append data to a Simple Linear Regression model' })
-  @ApiNotFoundResponse({ description: 'Model not found' })
-  @ApiUnprocessableEntityResponse({ description: 'Invalid data' })
-  @ApiConsumes('multipart/form-data')
-  @ApiOkResponse({ type: SlrModelEntity })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: { file: { type: 'string', format: 'binary' } },
-    },
-  })
-  @Post(':slrModelId/csv')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: memoryStorage(),
-      limits: { files: 1, fileSize: 1024 * 1024 * 5 }, // 1 MB you can adjust size here
-      fileFilter: (req, file, cb) => {
-        const allowedMimeTypes = ['text/csv'];
-        if (!allowedMimeTypes.includes(file.mimetype)) {
-          cb(new BadRequestException('Invalid file type'), false);
-        } else if (file?.size > 1024 * 1024 * 5) {
-          cb(
-            new BadRequestException('Max File Size Reached. Max Allowed: 1MB'),
-            false,
-          );
-        }
-        cb(null, true);
-      },
-    }),
-  )
+  // @ApiOperation({ summary: 'Append data to a Simple Linear Regression model' })
+  // @ApiNotFoundResponse({ description: 'Model not found' })
+  // @ApiUnprocessableEntityResponse({ description: 'Invalid data' })
+  // @ApiConsumes('multipart/form-data')
+  // @ApiOkResponse({ type: SlrModelEntity })
+  // @ApiBody({
+  //   schema: {
+  //     type: 'object',
+  //     properties: { file: { type: 'string', format: 'binary' } },
+  //   },
+  // })
+  // @Post(':slrModelId/csv')
+  // @UseInterceptors(
+  //   FileInterceptor('file', {
+  //     storage: memoryStorage(),
+  //     limits: { files: 1, fileSize: 1024 * 1024 * 5 }, // 1 MB you can adjust size here
+  //     fileFilter: (req, file, cb) => {
+  //       const allowedMimeTypes = ['text/csv'];
+  //       if (!allowedMimeTypes.includes(file.mimetype)) {
+  //         cb(new BadRequestException('Invalid file type'), false);
+  //       } else if (file?.size > 1024 * 1024 * 5) {
+  //         cb(
+  //           new BadRequestException('Max File Size Reached. Max Allowed: 1MB'),
+  //           false,
+  //         );
+  //       }
+  //       cb(null, true);
+  //     },
+  //   }),
+  // )
   public async appendDataCsv(
     @UploadedFile() file: Express.Multer.File,
     @Param('slrModelId') slrModelId: string,
@@ -120,6 +120,7 @@ export class SlrController {
   @Get(':slrModelId/graph')
   async graph(@Param('slrModelId') slrModelId: string, @Res() res: Response) {
     const data = await this.slrService.fullData(slrModelId);
+
     return res.render('slr', {
       name: data.slrModel.name,
       axilYName: data.slrModel.yKey,

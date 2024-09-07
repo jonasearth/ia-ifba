@@ -34,6 +34,20 @@ export class CreateSlrModelDto {
       message: 'The data object must have exactly two keys',
     },
   )
+  @ValidateBy(
+    {
+      name: 'has same length',
+      validator: {
+        validate(value: object) {
+          const keys = Object.keys(value);
+          return value[keys[0]].length === value[keys[1]].length;
+        },
+      },
+    },
+    {
+      message: 'The data arrays must have the same length',
+    },
+  )
   data: {
     [key: string]: number[];
   };

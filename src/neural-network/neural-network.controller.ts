@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Post,
   Res,
@@ -31,6 +32,9 @@ export class NeuralNetworkController {
   @Get('/view/:id')
   async viewDetails(@Res() res: Response, @Param('id') id: string) {
     const data = await this.neuralNetworkService.findById(id);
+    if (!data) {
+      throw new NotFoundException('Neural network not found');
+    }
     return res.render('neuralNetworkDetails', {
       neuralNetwork: data,
       renderOptionalInputs:

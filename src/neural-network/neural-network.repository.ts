@@ -21,6 +21,11 @@ export class NeuralNetworkRepository {
   async findByName(name: string): Promise<NeuralNetworkEntity | null> {
     return await this.neuralNetworkRepositoryReader.findOneBy({ name });
   }
+  async findBy(
+    data: Partial<NeuralNetworkEntity>,
+  ): Promise<NeuralNetworkEntity[] | null> {
+    return await this.neuralNetworkRepositoryReader.find({ where: data });
+  }
 
   async create(
     data: Partial<NeuralNetworkEntity>,

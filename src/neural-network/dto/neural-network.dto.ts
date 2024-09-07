@@ -7,6 +7,7 @@ import {
   IsNumber,
   Min,
   IsArray,
+  Max,
 } from 'class-validator';
 import {
   ActivationFunctionEnum,
@@ -39,7 +40,7 @@ export type NeuronData = {
 
 export class CreateNeuralNetworkInput {
   @ApiProperty({
-    enum: LearningTypeEnum,
+    enum: [LearningTypeEnum.BACK_PROPAGATION],
     example: 'BACK_PROPAGATION',
   })
   @IsEnum(LearningTypeEnum)
@@ -56,6 +57,7 @@ export class CreateNeuralNetworkInput {
     example: 10,
   })
   @IsNumber()
+  @Max(40)
   @Min(1)
   hiddenLayerNodeSize: number;
 
@@ -71,6 +73,7 @@ export class CreateNeuralNetworkInput {
     example: 10,
   })
   @IsNumber()
+  @Max(10)
   @Min(1)
   inputLayerNeuronLength: number;
 }
@@ -82,4 +85,10 @@ export class PredictNeuralNetworkInput {
   })
   @IsArray({})
   input: number[][];
+}
+
+export enum NeuralNetworkStatusEnum {
+  PENDING = 'PENDING',
+  TRAINING = 'TRAINING',
+  TRAINED = 'TRAINED',
 }

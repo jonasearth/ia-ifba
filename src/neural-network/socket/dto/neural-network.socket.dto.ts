@@ -73,7 +73,6 @@ export class TrainNeuralNetworkInput {
   })
   target: number[];
 
-  @ApiProperty({})
   @IsNumber()
   @Min(10)
   @IsOptional()
@@ -82,6 +81,7 @@ export class TrainNeuralNetworkInput {
   @ApiProperty({})
   @IsNumber()
   @Min(1)
+  @Max(100000)
   maxInterations: number;
 
   @ApiProperty({})
@@ -91,19 +91,16 @@ export class TrainNeuralNetworkInput {
 
   @IsNumber()
   @Min(0.000000001)
-  @ApiPropertyOptional({})
   @IsOptional()
   errorThreshold: number;
 
   @IsInt()
   @Min(5)
   @Max(50)
-  @ApiPropertyOptional({})
   @IsOptional()
   errorStagnationThreshold: number;
 
   @IsBoolean()
-  @ApiPropertyOptional({})
   @IsOptional()
   usePreviousData: boolean;
 }

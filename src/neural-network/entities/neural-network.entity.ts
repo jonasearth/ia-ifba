@@ -8,7 +8,11 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { LearningTypeEnum, NeuralNetworkData } from '../dto/neural-network.dto';
+import {
+  LearningTypeEnum,
+  NeuralNetworkData,
+  NeuralNetworkStatusEnum,
+} from '../dto/neural-network.dto';
 
 @Entity('neural_networks')
 export class NeuralNetworkEntity {
@@ -38,6 +42,14 @@ export class NeuralNetworkEntity {
     type: 'jsonb',
   })
   data: NeuralNetworkData;
+
+  @ApiResponseProperty()
+  @Column({
+    enum: NeuralNetworkStatusEnum,
+    nullable: false,
+    default: 'PENDING',
+  })
+  status: NeuralNetworkStatusEnum;
 
   @ApiResponseProperty()
   @CreateDateColumn({ name: 'created_at' })

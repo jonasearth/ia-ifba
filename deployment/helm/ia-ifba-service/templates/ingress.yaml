@@ -4,7 +4,10 @@ metadata:
   name: {{ include "ia-ifba.fullname" . }}-ingress
   annotations:
     cert-manager.io/cluster-issuer: lets-encrypt
-    ingress.kubernetes.io/cache-enable: "true"
+    # limita requisições por segundo
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    # limita conexões por segundo
+    nginx.ingress.kubernetes.io/limit-conn: "10"
     nginx.ingress.kubernetes.io/configuration-snippet: |
       more_set_headers "cache-control: public, must-revalidate, proxy-revalidate";
       more_set_headers "pragma: public";

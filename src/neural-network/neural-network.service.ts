@@ -9,6 +9,7 @@ import {
   CreateNeuralNetworkInput,
   LearningTypeEnum,
   NeuralNetworkData,
+  NeuralNetworkStatusEnum,
 } from './dto/neural-network.dto';
 import { NeuralNetworkRepository } from './neural-network.repository';
 import { NeuralNetworkEntity } from './entities/neural-network.entity';
@@ -50,6 +51,15 @@ export class NeuralNetworkService {
     );
     if (!neuralNetwork) {
       throw new NotFoundException('Neural network not found!');
+    }
+    if (neuralNetwork.status === NeuralNetworkStatusEnum.TRAINING) {
+      throw new BadRequestException('Neural network is already training!');
+    }
+    const findRunning = await this.neuralNetworkRepository.findBy({
+      status: NeuralNetworkStatusEnum.TRAINING,
+    });
+    if (findRunning.length >= 4) {
+      throw new BadRequestException('Too many trainings running!');
     }
     this.learningTypeValidation(
       neuralNetwork.learningType,
@@ -106,6 +116,10 @@ export class NeuralNetworkService {
     payload: TrainNeuralNetworkInput,
     client?: Socket,
   ) {
+    await this.neuralNetworkRepository.update({
+      ...neuralNetwork,
+      status: NeuralNetworkStatusEnum.TRAINING,
+    });
     console.time('treinamento');
     const neuralNetworkModel = NeuralNetwork.fromObject(neuralNetwork.data);
 
@@ -134,6 +148,7 @@ export class NeuralNetworkService {
 
     console.timeEnd('treinamento');
     neuralNetwork.data = neuralNetworkModel.toObject();
+    neuralNetwork.status = NeuralNetworkStatusEnum.TRAINED;
     await this.neuralNetworkRepository.update(neuralNetwork);
     const response = {
       id: neuralNetwork.id,
@@ -336,6 +351,7 @@ export class NeuralNetworkService {
       name,
       learningType,
       data: neuralNetwork.toObject(),
+      status: NeuralNetworkStatusEnum.PENDING,
     });
   }
 
